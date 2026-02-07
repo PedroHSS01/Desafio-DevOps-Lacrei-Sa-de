@@ -1,0 +1,53 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build Docker image
+        run: docker build -t lacrei-app .
+      
+      - name: Test Docker container
+        run: |
+          docker run -d -p 3000:3000 --name test-container lacrei-app
+          sleep 5
+          curl -f http://localhost:3000/status || exit 1
+          docker stop test-container
+
+  deploy-staging:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to Staging
+        run: echo "Deploy para staging"
+        # Aqui você vai adicionar os comandos de deploy
+
+  deploy-production:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to Production
+        run: echo "Deploy para produção"
+        # Aqui você vai adicionar os comandos de deploy

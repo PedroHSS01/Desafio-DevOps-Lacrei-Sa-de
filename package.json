@@ -1,0 +1,16 @@
+{
+  "name": "lacrei-devops-desafio",
+  "version": "1.0.0",
+  "description": "Desafio DevOps Lacrei Saúde",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "keywords": ["devops", "nodejs", "docker"],
+  "author": "Pedro Henrique",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
