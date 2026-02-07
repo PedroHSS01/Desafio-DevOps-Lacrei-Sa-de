@@ -23,14 +23,15 @@ jobs:
         run: npm install
       
       - name: Build Docker image
-        run: docker build -t lacrei-app .
+        run: docker build -t lacrei-app:${{ github.sha }} .
       
       - name: Test Docker container
         run: |
-          docker run -d -p 3000:3000 --name test-container lacrei-app
-          sleep 5
+          docker run -d -p 3000:3000 --name test-container lacrei-app:${{ github.sha }}
+          sleep 10
           curl -f http://localhost:3000/status || exit 1
           docker stop test-container
+          docker rm test-container
 
   deploy-staging:
     needs: build-and-test
@@ -38,9 +39,12 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
       - name: Deploy to Staging
-        run: echo "Deploy para staging"
-        # Aqui você vai adicionar os comandos de deploy
+        run: |
+          echo "Deploy para staging será configurado quando criarmos os servidores AWS"
 
   deploy-production:
     needs: build-and-test
@@ -48,6 +52,9 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
       - name: Deploy to Production
-        run: echo "Deploy para produção"
-        # Aqui você vai adicionar os comandos de deploy
+        run: |
+          echo "Deploy para produção será configurado quando criarmos os servidores AWS"
