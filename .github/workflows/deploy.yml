@@ -6,6 +6,9 @@ on:
       - main
       - staging
 
+env:
+  DOCKER_IMAGE: lacrei-app
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -23,15 +26,24 @@ jobs:
         run: npm install
       
       - name: Build Docker image
-        run: docker build -t lacrei-app:${{ github.sha }} .
+        run: docker build -t ${{ env.DOCKER_IMAGE }}:${{ github.sha }} .
       
       - name: Test Docker container
         run: |
-          docker run -d -p 3000:3000 --name test-container lacrei-app:${{ github.sha }}
+          docker run -d -p 3000:3000 --name test-container ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
           sleep 10
           curl -f http://localhost:3000/status || exit 1
           docker stop test-container
           docker rm test-container
+      
+      - name: Save Docker image
+        run: docker save ${{ env.DOCKER_IMAGE }}:${{ github.sha }} | gzip > app-image.tar.gz
+      
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-image
+          path: app-image.tar.gz
 
   deploy-staging:
     needs: build-and-test
@@ -39,12 +51,47 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        
+      - name: Download Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+      
       - name: Deploy to Staging
-        run: |
-          echo "Deploy para staging será configurado quando criarmos os servidores AWS"
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "app-image.tar.gz"
+          target: "/home/ubuntu/"
+      
+      - name: Run Docker on Staging
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Carregar imagem
+            docker load < /home/ubuntu/app-image.tar.gz
+            
+            # Parar container antigo se existir
+            docker stop lacrei-app-staging || true
+            docker rm lacrei-app-staging || true
+            
+            # Rodar novo container
+            docker run -d \
+              --name lacrei-app-staging \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e NODE_ENV=staging \
+              ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+            
+            # Limpar imagens antigas
+            docker image prune -af
+            
+            # Remover arquivo temporário
+            rm -f /home/ubuntu/app-image.tar.gz
 
   deploy-production:
     needs: build-and-test
@@ -52,9 +99,44 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        
+      - name: Download Docker image
+        uses: actions/download-artifact@v3
+        with:
+          name: docker-image
+      
       - name: Deploy to Production
-        run: |
-          echo "Deploy para produção será configurado quando criarmos os servidores AWS"
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "app-image.tar.gz"
+          target: "/home/ubuntu/"
+      
+      - name: Run Docker on Production
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Carregar imagem
+            docker load < /home/ubuntu/app-image.tar.gz
+            
+            # Parar container antigo se existir
+            docker stop lacrei-app-production || true
+            docker rm lacrei-app-production || true
+            
+            # Rodar novo container
+            docker run -d \
+              --name lacrei-app-production \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              -e NODE_ENV=production \
+              ${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+            
+            # Limpar imagens antigas
+            docker image prune -af
+            
+            # Remover arquivo temporário
+            rm -f /home/ubuntu/app-image.tar.gz
