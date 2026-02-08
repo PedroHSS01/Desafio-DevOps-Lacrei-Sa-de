@@ -20,8 +20,7 @@ Implementação de uma infraestrutura escalável e segura utilizando **Docker**,
 ---
 
 ## 🏗️ Arquitetura da Solução
-
-<img\download.png>
+<img src="https://github.com/PedroHSS01/Desafio-DevOps-Lacrei-Sa-de/blob/main/img/download.png">
 
 ### 🚀 Tecnologias Utilizadas
 
