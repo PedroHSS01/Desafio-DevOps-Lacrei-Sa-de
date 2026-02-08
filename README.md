@@ -1,4 +1,4 @@
-# Desafio DevOps - Lacrei Saúde 💙
+# Desafio DevOps - Lacrei Saúde 💚
 
 Este repositório contém a solução para o Desafio DevOps da Lacrei Saúde, apresentando um pipeline CI/CD completo para deploy automatizado de aplicações Node.js na AWS.
 
@@ -12,8 +12,8 @@ Implementação de uma infraestrutura escalável e segura utilizando **Docker**,
 
 | Ambiente | URL | Status | Nota |
 | :--- | :--- | :--- | :--- |
-| 🧪 **Staging** | [https://98.93.85.213/status](https://98.93.85.213/status) | ✅ Ativo | SSL Autoassinado |
-| 🚀 **Produção** | [https://100.53.117.140/status](https://100.53.117.140/status) | ✅ Ativo | SSL Autoassinado |
+| 🧪 **Staging** | [https://54.226.194.208/status](https://54.226.194.208/status) | ✅ Ativo | SSL Autoassinado |
+| 🚀 **Produção** | [https://54.159.81.199/status](https://54.159.81.199/status) | ✅ Ativo | SSL Autoassinado |
 
 > **Nota:** Ambos os ambientes redirecionam automaticamente tráfego HTTP para HTTPS (Porta 80 → 443).
 
@@ -67,8 +67,6 @@ O fluxo de automação é acionado a cada `push` nas branches principais.
 
 ## 📊 Monitoramento com CloudWatch
 
-
-
 Configurado para coletar dados críticos através do CloudWatch Agent:
 
 * **Métricas de Performance:** CPU (User/System), Memória (Utilizada/Disponível), Disco e conexões TCP.
@@ -78,6 +76,9 @@ Configurado para coletar dados críticos através do CloudWatch Agent:
     * Logs da API Node.js e `syslog` do Ubuntu.
 
 ---
+## Melhorias posteriores
+
+* **Alocar Elastic IPs na AWS:** Associar cada Elastic IP a uma instância. Os IPs serão permanentes mesmo após parar/iniciar.
 
 ## ↩️ Processo de Rollback
 
