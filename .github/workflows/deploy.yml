@@ -140,3 +140,4 @@ jobs:
             
             # Remover arquivo temporário
             rm -f /home/ubuntu/app-image.tar.gz
+            
