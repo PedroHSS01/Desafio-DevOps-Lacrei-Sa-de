@@ -10,13 +10,62 @@ Implementação de uma infraestrutura escalável e segura utilizando **Docker**,
 
 ## 📡 Ambientes Deployados
 
-| Ambiente | URL | Status | Nota |
-| :--- | :--- | :--- | :--- |
-| 🧪 **Staging** | [https://54.226.194.208/status](https://54.226.194.208/status) | ✅ Ativo | SSL Autoassinado |
-| 🚀 **Produção** | [https://54.159.81.199/status](https://54.159.81.199/status) | ✅ Ativo | SSL Autoassinado |
+| Branch | Ambiente | URL | Status | Nota | 
+| :--- | :--- | :--- | :--- | :--- |
+| `staging` | 🧪 **Staging** | [https://54.226.194.208/status](https://54.226.194.208/status) | ✅ Ativo | SSL Autoassinado |
+| `main` | 🚀 **Produção** | [https://54.159.81.199/status](https://54.159.81.199/status) | ✅ Ativo | SSL Autoassinado |
 
 > **Nota:** Ambos os ambientes redirecionam automaticamente tráfego HTTP para HTTPS (Porta 80 → 443).
 
+---
+
+## 🌍 Separação de Ambientes
+
+A infraestrutura foi projetada com **isolamento completo** entre staging e produção:
+
+| Aspecto | Staging | Production |
+|---------|---------|------------|
+| **Branch Git** | `staging` | `main` |
+| **Instância EC2** | `lacrei-staging` (54.226.194.208) | `lacrei-production` (54.159.81.199) |
+| **Security Group** | `lacrei-app-sg` (isolado) | `lacrei-app-sg` (isolado) |
+| **Container Docker** | `lacrei-app-staging` | `lacrei-app-production` |
+| **NODE_ENV** | `staging` | `production` |
+| **Deploy Trigger** | Push em `staging` | Push em `main` |
+| **Propósito** | Validação e testes | Usuários reais |
+| **Impacto de falhas** | Zero impacto em produção | Crítico |
+
+### Processo para staging
+
+1. **Desenvolvimento**: Commit e push na branch `staging`
+```bash
+   git checkout staging
+   git add .
+   git commit -m "feat: nova funcionalidade"
+   git push origin staging
+```
+
+2. **Validação Automática**: GitHub Actions executa:
+   - Build da imagem Docker
+   - Testes de integridade
+   - Deploy em staging (54.226.194.208)
+
+3. **Testes Manuais**: Validar endpoint `/status` em staging
+
+4. **Processo para Produção**:
+```bash
+   git checkout main
+   git merge staging
+   git push origin main
+```
+
+5. **Deploy em Produção**: GitHub Actions replica o processo para production
+
+### Benefícios do Isolamento
+
+✅ **Nenhuma mudança afeta produção sem passar por staging**  
+✅ **Rollback em staging não impacta usuários**  
+✅ **Testes de carga podem ser feitos em staging**  
+✅ **Credenciais separadas (GitHub Secrets diferentes)**
 ---
 
 ## 🏗️ Arquitetura da Solução
