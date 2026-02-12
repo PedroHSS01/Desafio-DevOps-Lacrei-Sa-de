@@ -228,13 +228,3 @@ ssh -i lacrei-devops-key-new.pem ubuntu@54.159.81.199 'sed -i "/OLD_KEY_CONTENT/
 ```
 
 ---
-
-## 📞 Contato para Questões de Segurança
-
-Para reportar vulnerabilidades ou questões de segurança:
-- **Email:** pedrohs1080@gmail.com
-- **Resposta:** Dentro de 48 horas
-
-**Política de Divulgação Responsável:**
-- Não divulgar publicamente até correção
-- Recebimento de crédito na correção (se desejar)
