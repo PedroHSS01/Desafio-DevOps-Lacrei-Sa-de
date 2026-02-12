@@ -1,0 +1,154 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Determine Rollback Target
+        id: rollback-target
+        run: |
+          if [ "${{ github.event.inputs.environment }}" == "staging" ]; then
+            echo "BRANCH=staging" >> $GITHUB_OUTPUT
+          else
+            echo "BRANCH=main" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Get Previous Commit
+        id: previous-commit
+        run: |
+          # Get the commit before the last one in the current branch
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          PREVIOUS_COMMIT=$(git rev-parse HEAD~1)
+          
+          echo "current=$CURRENT_COMMIT" >> $GITHUB_OUTPUT
+          echo "previous=$PREVIOUS_COMMIT" >> $GITHUB_OUTPUT
+          
+          echo "Rolling back from $CURRENT_COMMIT to $PREVIOUS_COMMIT"
+      
+      - name: Rollback via Git Revert
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          
+          # Create a revert commit
+          git revert --no-edit HEAD
+          
+          git push origin ${{ steps.rollback-target.outputs.BRANCH }}
+      
+      - name: Notify Rollback in Progress
+        run: |
+          echo "Rollback initiated for ${{ github.event.inputs.environment }}"
+          echo "Previous commit: ${{ steps.previous-commit.outputs.previous }}"
+          echo "Revert commit will trigger automatic deployment..."
+      
+      - name: Wait for Deployment
+        run: |
+          echo "Waiting for GitHub Actions to deploy the rollback..."
+          sleep 30
+      
+      - name: Verify Rollback - Staging
+        if: github.event.inputs.environment == 'staging'
+        run: |
+          echo "Verifying rollback on staging (54.226.194.208)..."
+          
+          # Give 30 seconds for deployment to complete
+          sleep 30
+          
+          # Attempt health check with retries
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Health check attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+            
+            RESPONSE=$(curl -s -w "\n%{http_code}" -k https://54.226.194.208/status || echo -e "\nError")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | head -n-1)
+            
+            if [ "$HTTP_CODE" == "200" ]; then
+              echo "Staging is healthy!"
+              echo "Response: $BODY"
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          echo "Staging failed to respond after rollback!"
+          exit 1
+      
+      - name: Verify Rollback - Production
+        if: github.event.inputs.environment == 'production'
+        run: |
+          echo "Verifying rollback on production (54.159.81.199)..."
+          
+          # Give 30 seconds for deployment to complete
+          sleep 30
+          
+          # Attempt health check with retries
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Health check attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
+            
+            RESPONSE=$(curl -s -w "\n%{http_code}" -k https://54.159.81.199/status || echo -e "\nError")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | head -n-1)
+            
+            if [ "$HTTP_CODE" == "200" ]; then
+              echo "Production is healthy!"
+              echo "Response: $BODY"
+              exit 0
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          
+          echo "Production failed to respond after rollback!"
+          exit 1
+      
+      - name: Rollback Success Notification
+        if: success()
+        run: |
+          echo "Rollback completed successfully!"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Git Revert: ${{ steps.previous-commit.outputs.current }} → ${{ steps.previous-commit.outputs.previous }}"
+      
+      - name: Rollback Failure Notification
+        if: failure()
+        run: |
+          echo "Rollback failed or health check did not pass!"
+          echo "Manual intervention may be required."
+          exit 1
