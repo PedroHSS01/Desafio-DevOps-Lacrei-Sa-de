@@ -128,7 +128,7 @@ jobs:
             curl -f http://localhost:3000/status || exit 1
             
             # Limpar imagens antigas (exceto backup)
-            docker image prune -af
+            docker images | grep lacrei-app | grep -v backup | awk '{print $3}' | tail -n +2 | xargs -r docker rmi || true
             
             # Remover arquivo temporário
             rm -f /home/ubuntu/app-image.tar.gz
